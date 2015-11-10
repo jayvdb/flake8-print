@@ -1,8 +1,35 @@
+import functools
+
 from textwrap import dedent
 
-from pep8 import BaseReport, Checker, StyleGuide
+try:
+    from flake8 import pep8
+except ImportError:
+    import pep8
+
 from flake8_print import print_usage
+
+try:
+    from unittest import skipIf
+except ImportError:
+    skipIf = None
+
 from nose.tools import assert_equal, assert_true
+
+
+if hasattr(pep8, 'BaseReport'):
+    BaseReport = pep8.BaseReport
+else:
+    class BaseReport(object):
+        def error(self, line_number, offset, text, check):
+            code = text[0:4]
+            return code
+
+
+if hasattr(pep8, 'StyleGuide'):
+    StyleGuide = pep8.StyleGuide
+else:
+    StyleGuide = object
 
 
 class CaptureReport(BaseReport):
@@ -40,13 +67,39 @@ class PrintTestStyleGuide(StyleGuide):
 
 
 _print_test_style = PrintTestStyleGuide()
+_inspect_checker = pep8.Checker('foo')
+
+noqa_supported = hasattr(_inspect_checker, 'noqa')
+
+if not noqa_supported:
+    # remove noqa
+    _print_test_style.logical_checks[0] = (
+        'print_usage', print_usage, ['logical_line'])
+
+
+def old_pep8_message(report, text):
+    """Capture old message."""
+    filename, line_number, offset, error = text.split(':')
+    line_number = int(line_number)
+    offset = int(offset) - 1
+    code = error[1:5]
+    text = error[7:]
+    report.error(line_number, offset, text, check)
 
 
 def check_code_for_print_statements(code):
     """Process code using pep8 Checker and return all errors."""
     report = CaptureReport(options=_print_test_style)
     lines = [line + '\n' for line in code.split('\n')]
-    checker = Checker(lines=lines, options=_print_test_style, report=report)
+    if hasattr(pep8, 'options'):
+        pep8.options = _print_test_style
+        checker = pep8.Checker(lines=lines)
+        pep8.message = functools.partial(old_pep8_message, report)
+    else:
+        checker = pep8.Checker(filename=None, lines=lines,
+                               options=_print_test_style, report=report)
+
+
     checker.check_all()
     return report._results
 
@@ -55,11 +108,26 @@ class Flake8PrintTestCases(object):
     pass
 
 
-class TestGenericCases(Flake8PrintTestCases):
+if skipIf:
+    skipIfUnsupported = functools.partial(
+        skipIf,
+        condition=not noqa_supported,
+        reason='noqa is not supported on this flake8 version')
+else:
+    def skipIfUnsupported():
+        def noop(*args, **kwargs):
+            pass
+
+        return noop
+
+class TestNoQA(Flake8PrintTestCases):
+
+    @skipIfUnsupported()
     def test_skips_noqa(self):
         result = check_code_for_print_statements('print(4) # noqa')
         assert_equal(result, list())
 
+    @skipIfUnsupported()
     def test_skips_noqa_multiline(self):
         result = check_code_for_print_statements(dedent("""
             print("a"
@@ -67,6 +135,7 @@ class TestGenericCases(Flake8PrintTestCases):
         """))
         assert_equal(result, list())
 
+    @skipIfUnsupported()
     def test_skips_noqa_inside_multiline(self):
         result = check_code_for_print_statements(dedent("""
             print("a"  # noqa
@@ -74,9 +143,13 @@ class TestGenericCases(Flake8PrintTestCases):
         """))
         assert_equal(result, list())
 
+    @skipIfUnsupported()
     def test_skips_noqa_line_only(self):
         result = check_code_for_print_statements('print(4); # noqa\nprint(5)\n# noqa')
         assert_equal(result, [{'col': 0, 'line': 2, 'message': 'T001 print function found.'}])
+
+
+class TestGenericCases(Flake8PrintTestCases):
 
     def test_catches_multiline_print(self):
         result = check_code_for_print_statements(dedent("""

@@ -22,13 +22,13 @@ When both ``flake8 2.2`` and ``flake8-print`` are installed, the plugin is
 available in ``flake8``::
 
     $ flake8 --version
-    2.0 (pep8: 1.4.5, flake8-print: 1.0, pyflakes: 0.6.1)
+    2.0 (pep8: 1.4.5, flake8-print: 2.0, pyflakes: 0.6.1)
 
 
 Changes
 -------
 
-1.7 - 2015-11-10
+2.0 - 2015-11-10
 ``````````````````
 * Support noqa at end of multiline print statement
 * Performance improvements

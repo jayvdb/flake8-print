@@ -1,7 +1,7 @@
 """Extension for flake8 that finds usage of print."""
 import re
 
-__version__ = '1.7.0'
+__version__ = '2.0.0'
 
 PRINT_ERROR_CODE = 'T001'
 PRINT_ERROR_MESSAGE = 'print statement found.'
@@ -18,7 +18,7 @@ RE_PRINT_STATEMENT = re.compile(r"(?<![=\s])\s*print\s+[^(=]", re.MULTILINE)
 RE_PRINT_FUNCTION = re.compile(r"(?<!def\s)print\s*\([^)]*\)", re.MULTILINE)
 
 @flake8ext
-def print_usage(logical_line, noqa):
+def print_usage(logical_line, noqa=None):
     if noqa:
         return
     m = RE_PRINT_STATEMENT.search(logical_line)

@@ -20,7 +20,7 @@ def get_long_description():
 
 install_requires = ['flake8']
 
-test_requires = ['nose']
+test_requires = ['nose', 'flake8>=1.5']
 
 setup(
     name='flake8-print',
